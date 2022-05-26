@@ -5,11 +5,14 @@ using UnityEngine;
 public class DungeonGenerator : MonoBehaviour
 {
     [SerializeField] GameObject[] roomPrefabs;
-    [SerializeField] GameObject nullPrefab;
+    [SerializeField] GameObject tunnelPrefab;
+    public int offset;
     public List<List<GameObject>> grid = new List<List<GameObject>>();
     public int columns, rows;
     public List<GameObject> allRooms = new List<GameObject>();    
+    public List<GameObject> allTunnels = new List<GameObject>();  
     void Start() => columns = columns + 2;   
+    private GameObject newRoom;
     public void GenerateButton()
     {
         if(grid.Count == 0 || allRooms.Count == 0)
@@ -23,12 +26,15 @@ public class DungeonGenerator : MonoBehaviour
     {
         for (int col = 0; col < columns; col++)
             grid[col].Clear();
-
         grid.Clear();
 
         foreach (GameObject room in allRooms)
             Destroy(room);
         allRooms.Clear();
+
+        foreach (GameObject tunnel in allTunnels)
+            Destroy(tunnel);
+        allTunnels.Clear();
         Generate();
     }
     void Generate()
@@ -72,34 +78,58 @@ public class DungeonGenerator : MonoBehaviour
             bool[] doorsToOpen = new bool[] { false, false, false, false };
             if (roomBehaviour.gridCords.y+1 != rows)
             {
-                if(grid[roomBehaviour.gridCords.x][roomBehaviour.gridCords.y+ 1] != null)
+                GameObject roomToCheck = grid[roomBehaviour.gridCords.x][roomBehaviour.gridCords.y + 1];
+                if(roomToCheck != null)
+                {
                     doorsToOpen[0] = true;
+                    MakeDoors(room, roomToCheck, doorsToOpen);
+                    MakeNewTunnel(room, roomToCheck);
+                }
             }
 
             if (roomBehaviour.gridCords.y != 0)
             { 
-                if(grid[roomBehaviour.gridCords.x][roomBehaviour.gridCords.y - 1] != null)
+                GameObject roomToCheck = grid[roomBehaviour.gridCords.x][roomBehaviour.gridCords.y - 1];
+                if(roomToCheck != null)
+                {
                     doorsToOpen[1] = true;
+                    MakeDoors(room, roomToCheck, doorsToOpen);
+                    MakeNewTunnel(room, roomToCheck);
+                }
             }
             if (roomBehaviour.gridCords.x+1 != columns)
             {
-                if(grid[roomBehaviour.gridCords.x + 1][roomBehaviour.gridCords.y] != null)
-                    doorsToOpen[2] = true;
+                GameObject roomToCheck = grid[roomBehaviour.gridCords.x + 1][roomBehaviour.gridCords.y];
+                if(roomToCheck != null)
+                {
+                    doorsToOpen[2] = true;   
+                    MakeDoors(room, roomToCheck, doorsToOpen);
+                    MakeNewTunnel(room, roomToCheck);
+                }
             }
 
             if (roomBehaviour.gridCords.x != 0)
             {
-                if(grid[roomBehaviour.gridCords.x - 1][roomBehaviour.gridCords.y] != null)
+                GameObject roomToCheck = grid[roomBehaviour.gridCords.x - 1][roomBehaviour.gridCords.y];
+                if(roomToCheck != null)
+                {
                     doorsToOpen[3] = true;
+                    MakeDoors(room, roomToCheck, doorsToOpen);
+                    MakeNewTunnel(room, roomToCheck);
+                }
             }
-            roomBehaviour.UpdateRoom(doorsToOpen);
         }
+    }
+    void MakeDoors(GameObject room, GameObject roomToCheck, bool[] doorsToOpen)
+    {
+        RoomBehaviour roomBehaviour = room.GetComponent<RoomBehaviour>();
+        roomBehaviour.UpdateRoom(doorsToOpen);
     }
     void MakeNewRoom(int col, int row)
     {
-        GameObject newRoom = Instantiate(roomPrefabs[Random.Range(0, roomPrefabs.Length)], Vector3.zero, Quaternion.identity);
+        newRoom = Instantiate(roomPrefabs[Random.Range(0, roomPrefabs.Length)], Vector3.zero, Quaternion.identity);
         RoomBehaviour roomBehaviour = newRoom.GetComponent<RoomBehaviour>();
-        Vector3 pos = new Vector3(col*24, row*10, 0);
+        Vector3 pos = new Vector3((col+offset)*(roomBehaviour.roomSize.x+offset), (row+offset)*(roomBehaviour.roomSize.y+offset), 0);
         newRoom.transform.position = pos;
         grid[col].Add(newRoom);
         allRooms.Add(newRoom);
@@ -108,5 +138,40 @@ public class DungeonGenerator : MonoBehaviour
             roomBehaviour.isStart = true;
         if (col == columns-1)
             roomBehaviour.isEnding = true;
+    }
+    void MakeNewTunnel(GameObject room1, GameObject room2)
+    {
+        bool isHorizontal;
+        if (Mathf.RoundToInt(room1.transform.position.x) == Mathf.RoundToInt(room2.transform.position.x))
+            isHorizontal = false;
+        else
+            isHorizontal = true;
+        
+        if (isHorizontal)
+        {
+            GameObject newTunnel = Instantiate(tunnelPrefab, Vector3.zero, Quaternion.Euler(0, 0, 90));
+            MoveTunnel(newTunnel, room1.transform.position, room2.transform.position, true);
+        }
+
+        else
+        {
+            GameObject newTunnel = Instantiate(tunnelPrefab, Vector3.zero, Quaternion.identity);
+            MoveTunnel(newTunnel, room1.transform.position, room2.transform.position, false);
+        }
+        
+
+
+    }
+    void MoveTunnel(GameObject tunnel, Vector3 room1, Vector3 room2, bool isHorizontal)
+    {
+        if(isHorizontal)
+        {
+            tunnel.transform.position = new Vector3((room1.x + room2.x)/2, room1.y, 0);
+        }
+        else
+        {
+            tunnel.transform.position = new Vector3(room1.x, (room1.y + room2.y) / 2, 0);
+        }
+        allTunnels.Add(tunnel);
     }
 }
