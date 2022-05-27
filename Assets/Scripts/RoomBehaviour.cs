@@ -5,7 +5,6 @@ using UnityEngine;
 public class RoomBehaviour : MonoBehaviour
 {
     [SerializeField] GameObject[] doors;
-    [SerializeField] int offset;
     public Vector2Int roomSize;
     public Vector2Int gridCords;
     public bool isStart;
